@@ -1,0 +1,30 @@
+# systemd unit for the gold scalping bot (no Docker)
+#
+# Install:
+#   sudo cp deploy/gold-bot.service /etc/systemd/system/
+#   sudo nano /etc/systemd/system/gold-bot.service   # fix paths / user
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now gold-bot
+#
+# Logs:
+#   journalctl -u gold-bot -f
+
+[Unit]
+Description=Gold XAU/USDT scalping bot (MEXC -> Telegram)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/user/pdf
+ExecStart=/home/user/pdf/.venv/bin/python /home/user/pdf/run.py
+Restart=always
+RestartSec=10
+# Stop gracefully so in-flight notifications finish
+KillSignal=SIGINT
+TimeoutStopSec=30
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
