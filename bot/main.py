@@ -221,8 +221,10 @@ async def run_live(cfg: Config, once: bool = False) -> int:
 
     # --- Telegram ---
     app = Application.builder().token(cfg.telegram_token).build()
-    await app.initialize()
     try:
+        # Note: Application.initialize() itself calls get_me(), so a bad token
+        # or unreachable api.telegram.org surfaces here.
+        await app.initialize()
         me = await app.bot.get_me()
         log.info("Telegram bot @%s connected", me.username)
     except Exception as exc:
