@@ -74,6 +74,7 @@ Send these to the bot in a private chat (or anywhere it can reply):
 | `/test` | Posts a test message + chart to your channel |
 | `/blackout` | News-blackout status |
 | `/lastsignal` | Reprint the last emitted setup |
+| `/aicheck` | Ask the AI model for its **exact** verdict on the current market (one line) |
 | `/enable gold` `/disable gold` | Pause / resume signal scanning live |
 | `/enable charts` `/enable ai` `/enable broadcast` `/enable tracking` `/enable errors` `/enable news` | Live module toggles |
 | `/set min_signal_score 70` | Live parameter change (see below) |
@@ -196,6 +197,10 @@ max drawdown, and a per-strategy breakdown. An equity-curve PNG is saved to
   insurance.
 - AI vetting sends setup summaries (price/levels only) to OpenRouter. Disable
   with `AI_ENABLED=false` if you prefer.
+- Only the model's **exact one-line verdict** (`CONFIRM | …`, `REJECT | …`,
+  `NEUTRAL | …`) is posted to Telegram. Chain-of-thought / `<thinking>` output
+  is stripped and logged at DEBUG level in `data/logs/gold_bot.log` — it never
+  reaches the channel. Use `/aicheck` to see the exact verdict on demand.
 
 ## ℹ️ Notes
 

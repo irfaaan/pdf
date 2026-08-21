@@ -235,7 +235,8 @@ async def run_live(cfg: Config, once: bool = False) -> int:
     notifier = Notifier(app.bot, cfg)
     tracker = SignalTracker(cfg.data_dir, enabled=cfg.tracking_enabled)
     ai = AIAdvisor(cfg)
-    deps = Deps(cfg=cfg, state=state, engine=None, tracker=tracker, notifier=notifier, exchange=None)
+    deps = Deps(cfg=cfg, state=state, engine=None, tracker=tracker, notifier=notifier,
+                exchange=None, ai=ai)
     app.bot_data["deps"] = deps
     register_handlers(app, deps)
     app.add_error_handler(_tg_error_handler)

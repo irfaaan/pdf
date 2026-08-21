@@ -73,6 +73,7 @@ class Deps:
     tracker: object
     notifier: object
     exchange: object
+    ai: object = None
 
 
 def register_handlers(app: Application, deps: Deps) -> None:
@@ -94,6 +95,7 @@ def register_handlers(app: Application, deps: Deps) -> None:
     app.add_handler(c("strategies", cmd_strategies))
     app.add_handler(c("reset", cmd_reset))
     app.add_handler(c("lastsignal", cmd_last_signal))
+    app.add_handler(c("aicheck", cmd_aicheck))
 
 
 # --------------------------------------------------------------------------- #
@@ -399,3 +401,48 @@ async def cmd_last_signal(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return
     text = deps.notifier.build_signal_text(deps.state.last_signal)
     await _reply(update, text)
+
+
+async def cmd_aicheck(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Ask the configured AI model for its exact verdict on the current market."""
+    deps: Deps = context.bot_data["deps"]
+    if not deps.state.toggles.get("ai", deps.cfg.ai_enabled):
+        await _reply(update, "🤖 AI vetting is disabled. Enable it: /enable ai")
+        return
+    if not deps.cfg.ai_model or not deps.cfg.openrouter_keys:
+        await _reply(update, "❌ AI not configured — set AI_MODEL and OPENROUTER_API_KEY in .env")
+        return
+
+    await _reply(update, f"🤖 Asking <b>{html.escape(deps.cfg.ai_model)}</b> for its verdict…")
+
+    # Build context from the latest cached candles
+    price: float | None = None
+    atr_val: float = 0.0
+    try:
+        tf = deps.cfg.timeframes[-1]
+        candles = deps.engine.latest_candles(tf)
+        if candles:
+            from bot.indicators import atr as atr_ind
+
+            tail = candles[-80:]
+            price = float(tail[-1][4])
+            atr_val = float(atr_ind([c[2] for c in tail], [c[3] for c in tail],
+                                    [c[4] for c in tail], 14)[-1] or 0.0)
+        if price is None:
+            price = await deps.engine.current_price()
+    except Exception as exc:
+        log.warning("aicheck context failed: %s", exc)
+    if price is None:
+        await _reply(update, "❌ Could not fetch price — is the exchange connected?")
+        return
+
+    snapshot = (
+        f"XAU/USDT price {price:.2f}, ATR(14) {atr_val:.2f}. "
+        "Give your exact one-line scalping bias for the next 15 minutes: "
+        "CONFIRM (long), REJECT, or NEUTRAL with a short reason."
+    )
+    verdict = await deps.ai.vet(snapshot, price, atr_val)
+    if verdict is None:
+        await _reply(update, "🤖 AI returned nothing usable (see logs). The model/API may be unreachable.")
+        return
+    await _reply(update, f"🤖 <b>AI verdict</b> ({html.escape(deps.cfg.ai_model)}):\n<code>{html.escape(verdict)}</code>")
