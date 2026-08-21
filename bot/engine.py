@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime as dt
+import html
 import logging
 import time
 from pathlib import Path
@@ -249,7 +250,8 @@ class SignalEngine:
                 sig["atr"],
             )
             if verdict:
-                new_text = self.notifier.build_signal_text(sig) + f"\n🤖 AI vetting: {verdict}"
+                safe_verdict = html.escape(verdict)
+                new_text = self.notifier.build_signal_text(sig) + f"\n🤖 AI vetting: {safe_verdict}"
                 await self.notifier.edit_text(msg, new_text)
         except Exception as exc:
             log.debug("AI edit failed: %s", exc)

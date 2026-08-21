@@ -19,6 +19,8 @@ Commands:
 
 Mutating commands (/set, /enable, /disable, /strategy, /cooldown, /reset)
 require ADMIN_CHAT_ID when it is configured; otherwise anyone can use them.
+(All angle-bracket placeholders in this text are escaped with &lt; &gt; so
+Telegram's HTML parser accepts the message.)
 """
 from __future__ import annotations
 
@@ -27,6 +29,7 @@ import logging
 from dataclasses import dataclass
 
 from telegram import Update
+from telegram.error import TelegramError
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 from bot.charting import format_price, render_chart
@@ -40,20 +43,22 @@ HELP_TEXT = """\
 Scans 1m/5m/15m candles 24/7 and posts scalping setups to this channel.
 
 <b>Commands</b>
-/status — bot & exchange health
+/status — bot &amp; exchange health
 /price — current gold price
 /chart — latest candles chart
 /signals — last signals
 /stats — tracked win/loss stats
 /test — test notification
 /blackout — news blackout status
+/lastsignal — reprint last setup
+/aicheck — AI verdict on current market
 
 <b>Admin commands</b>
-/enable <module> · /disable <module>
+/enable &lt;module&gt; · /disable &lt;module&gt;
   modules: gold, charts, ai, broadcast, tracking, errors, news
-/set <param> <value> — live tuning
-/cooldown <minutes>
-/strategy <name> on|off — live strategy toggles
+/set &lt;param&gt; &lt;value&gt; — live tuning
+/cooldown &lt;minutes&gt;
+/strategy &lt;name&gt; on|off — live strategy toggles
 /strategies — list strategy states
 /reset — wipe tracked signals
 
@@ -110,10 +115,18 @@ def _is_admin(update: Update, deps: Deps) -> bool:
 
 
 async def _reply(update: Update, text: str) -> None:
+    """Send a reply. Tries HTML first; if Telegram rejects the markup
+    (bad entities), falls back to plain text so the command still works."""
+    if update.message is None:
+        return
     try:
-        if update.message is None:
-            return
         await update.message.reply_text(text, parse_mode="HTML")
+    except TelegramError as exc:
+        log.warning("HTML reply failed (%s) — retrying as plain text", exc)
+        try:
+            await update.message.reply_text(text)
+        except Exception as exc2:
+            log.warning("plain-text reply also failed: %s", exc2)
     except Exception as exc:
         log.warning("reply failed: %s", exc)
 
