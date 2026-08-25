@@ -1,0 +1,18 @@
+services:
+  gold-bot:
+    build: .
+    container_name: gold-xauusdt-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - TZ=UTC
+    volumes:
+      - ./data:/app/data
+    # Memory guard — a leaky dependency can't take the whole VPS down
+    mem_limit: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
